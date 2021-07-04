@@ -37,6 +37,7 @@ fn compile(program: Program) -> fn(f64) -> f64 {
         let mut fctx = FunctionBuilderContext::new();
         let mut builder = FunctionBuilder::new(&mut context.func, &mut fctx);
 
+        let mut varcount = program.variables.len();
         let vars: HashMap<String, Variable> = program
             .variables
             .into_iter()
@@ -58,7 +59,7 @@ fn compile(program: Program) -> fn(f64) -> f64 {
             builder.def_var(*var, builder.block_params(entry)[0]);
         }
 
-        jit(&mut builder, &vars, &program.instructions);
+        jit(&mut builder, &vars, &program.instructions, &mut varcount);
 
         // return value stored in output OR 0 if output is not set
         let retval = if let Some(var) = vars.get("output") {
@@ -90,6 +91,7 @@ fn jit(
     mut builder: &mut FunctionBuilder,
     vars: &HashMap<String, Variable>,
     instructions: &[structure::Instruction],
+    mut varcount: &mut usize,
 ) {
     if instructions.len() == 0 {
         return;
@@ -123,16 +125,45 @@ fn jit(
             // TODO? seal current block
 
             builder.switch_to_block(ifblock);
-            jit(&mut builder, vars, body);
+            jit(&mut builder, vars, body, varcount);
             builder.seal_block(ifblock);
 
             // Progress to the next block
             builder.switch_to_block(continueblock);
-        }
+        },
+        &Loop {
+            ref times,
+            ref body,
+        } => {
+            let repetitions = val(&times, &mut builder, &vars);
+            
+            let counter = Variable::new(*varcount);
+            *varcount += 1;
+            builder.declare_var(counter, I64);
+            builder.def_var(counter, repetitions);
+
+            let loopblock = builder.create_block();
+            let continueblock = builder.create_block();
+
+            builder.ins().jump(loopblock, &[]);
+            // TODO seal current block?
+            builder.switch_to_block(loopblock);
+            let counter_value = builder.use_var(counter);
+            let zero = builder.ins().iconst(I64, 0);
+            builder.ins().br_icmp(IntCC::SignedLessThanOrEqual, counter_value, zero, continueblock, &[]);
+            // emit loop body
+            jit(&mut builder, vars, body, &mut varcount);
+            // jump back to start of loop
+            builder.ins().jump(loopblock, &[]);
+
+            builder.seal_block(loopblock);
+            builder.switch_to_block(continueblock);
+        },
+
         _ => unimplemented!(),
     }
 
-    jit(builder, vars, instructions)
+    jit(builder, vars, instructions, &mut varcount)
 }
 
 fn eval(
