@@ -1,0 +1,14 @@
+[package]
+name = "loop-jit"
+version = "0.1.0"
+authors = ["Nils Martel <nilsmartel@yahoo.de>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cranelift-frontend = "0.75.0"                 # Cranelift IR builder helper
+cranelift-codegen = "0.75.0"                        # Low-level code generator library
+cranelift-jit = "0.75.0"       # A JIT library backed by Cranelift
+cranelift-module = "0.75.0"                 # Support for linking functions and data with Cranelift
+cranelift = "0.75.0"                                # Umbrella for commonly-used cranelift crates
