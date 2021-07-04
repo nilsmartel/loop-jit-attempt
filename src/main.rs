@@ -2,25 +2,29 @@ mod structure;
 use std::collections::HashMap;
 
 use cranelift::prelude::{types::I64, AbiParam, EntityRef, ExternalName, InstBuilder, IntCC};
-use cranelift_codegen::ir::Value;
+use cranelift_codegen::{binemit::{NullStackMapSink, NullTrapSink}, ir::Value};
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use cranelift_module::{default_libcall_names, Module};
 use structure::Program;
 
 use cranelift_jit::{JITBuilder, JITModule};
 fn main() {
+    let program: Program = todo!();
+
+    let program = compile(program);
+}
+
+fn compile(program: Program) -> fn(f64) -> f64 {
     let mut module = {
         let builder = JITBuilder::new(default_libcall_names());
         JITModule::new(builder)
     };
-
     let sign = {
         let mut sign = module.make_signature();
         sign.params.push(AbiParam::new(I64));
         sign.returns.push(AbiParam::new(I64));
         sign
     };
-
     let func_id = module.declare_anonymous_function(&sign).unwrap();
     let mut context = module.make_context();
     context.func.signature = sign;
@@ -29,7 +33,6 @@ fn main() {
         index: func_id.as_u32(),
     };
     {
-        let program: Program = todo!();
 
         let mut fctx = FunctionBuilderContext::new();
         let mut builder = FunctionBuilder::new(&mut context.func, &mut fctx);
@@ -64,6 +67,20 @@ fn main() {
             builder.ins().iconst(I64, 0)
         };
         builder.ins().return_(&[retval]);
+
+        // finish up
+        builder.seal_all_blocks();
+        builder.finalize();
+    }
+    let mut trap_sink = NullTrapSink {};
+    let mut stack_map_sink = NullStackMapSink {};
+    module.define_function(func_id, &mut context, &mut trap_sink, &mut stack_map_sink).unwrap();
+    module.clear_context(&mut context);
+    module.finalize_definitions();
+    let ptr = module.get_finalized_function(func_id);
+
+    unsafe {
+        std::mem::transmute::<*const u8, fn(f64) -> f64>(ptr)
     }
 }
 
@@ -94,7 +111,7 @@ fn jit(
             let ifblock = builder.create_block();
             let continueblock = builder.create_block();
 
-            // TODO 0 or 1 here?
+            // TODO 0 or 1 here? -> verify what the result of an comparision is
             let success = builder.ins().iconst(I64, 1);
 
             builder
