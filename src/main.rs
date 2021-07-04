@@ -159,8 +159,6 @@ fn jit(
             builder.seal_block(loopblock);
             builder.switch_to_block(continueblock);
         },
-
-        _ => unimplemented!(),
     }
 
     jit(builder, vars, instructions, &mut varcount)
