@@ -72,6 +72,8 @@ fn compile(program: Program) -> fn(f64) -> f64 {
         builder.seal_all_blocks();
         builder.finalize();
     }
+
+    // start the actual jit compilation
     let mut trap_sink = NullTrapSink {};
     let mut stack_map_sink = NullStackMapSink {};
     module.define_function(func_id, &mut context, &mut trap_sink, &mut stack_map_sink).unwrap();
