@@ -9,12 +9,31 @@ use structure::Program;
 
 use cranelift_jit::{JITBuilder, JITModule};
 fn main() {
-    let program: Program = todo!();
+    let program: Program = Program {
+        variables: vec![
+            String::from("input"),
+            String::from("output"),
+        ],
+        instructions: vec![
+            structure::Instruction::Assign {
+                to: String::from("output"),
+                expr: structure::Expr {
+                    left: structure::Value::Variable(String::from("input")),
+                    right: structure::Value::Constant(1),
+                    op: structure::Operation::Plus,
+                },
+            },
+        ],
+    };
 
     let program = compile(program);
+
+    for i in 0..100 {
+        println!("input: {} output: {}", i , program(i));
+    }
 }
 
-fn compile(program: Program) -> fn(f64) -> f64 {
+fn compile(program: Program) -> fn(i64) -> i64 {
     let mut module = {
         let builder = JITBuilder::new(default_libcall_names());
         JITModule::new(builder)
@@ -83,7 +102,7 @@ fn compile(program: Program) -> fn(f64) -> f64 {
     let ptr = module.get_finalized_function(func_id);
 
     unsafe {
-        std::mem::transmute::<*const u8, fn(f64) -> f64>(ptr)
+        std::mem::transmute::<*const u8, fn(i64) -> i64>(ptr)
     }
 }
 
@@ -136,7 +155,7 @@ fn jit(
             ref body,
         } => {
             let repetitions = val(&times, &mut builder, &vars);
-            
+
             let counter = Variable::new(*varcount);
             *varcount += 1;
             builder.declare_var(counter, I64);
