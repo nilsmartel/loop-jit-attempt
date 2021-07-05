@@ -1,5 +1,4 @@
 mod structure;
-pub use structure::*;
 use std::collections::HashMap;
 
 use cranelift::prelude::{types::I64, AbiParam, EntityRef, ExternalName, InstBuilder, IntCC};
