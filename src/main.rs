@@ -1,4 +1,5 @@
 mod structure;
+pub use structure::*;
 use std::collections::HashMap;
 
 use cranelift::prelude::{types::I64, AbiParam, EntityRef, ExternalName, InstBuilder, IntCC};
@@ -33,7 +34,7 @@ fn main() {
     }
 }
 
-fn compile(program: Program) -> fn(i64) -> i64 {
+pub fn compile(program: Program) -> fn(i64) -> i64 {
     let mut module = {
         let builder = JITBuilder::new(default_libcall_names());
         JITModule::new(builder)
